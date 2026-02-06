@@ -1,0 +1,67 @@
+Sales Call Transcript
+Account: Acme Corp
+Date: 2026-02-04
+Attendees: Sarah Chen (Acme Corp, VP Engineering), Mike Rodriguez (Acme Corp, Platform Lead),
+           Tayden Barretto (HashiCorp, Sales Engineer), Lisa Park (HashiCorp, Account Executive)
+
+---
+
+Lisa Park: Thanks for joining today, Sarah and Mike. We're excited to continue the conversation about how HashiCorp can help Acme Corp. Last time we talked about your infrastructure modernization initiative. Tayden is here today to dive deeper into the technical side.
+
+Sarah Chen: Great, thanks Lisa. Yeah, we've been doing a lot of internal evaluation since our last call. We have some specific questions today, especially around Vault and Terraform.
+
+Tayden Barretto: Absolutely, happy to help. What's top of mind for you both?
+
+Mike Rodriguez: So our biggest concern right now is secrets management. We're currently using a mix of environment variables and AWS Secrets Manager, but it's becoming a mess. We have about 200 microservices and each team manages secrets differently. There's no consistency, no audit trail, and honestly, we found some hardcoded credentials in our repos last month during a security audit. It was not great.
+
+Tayden Barretto: That's a really common situation, Mike. The inconsistency across teams is actually one of the primary drivers for adopting Vault. Can you tell me more about your current authentication setup? How are your services authenticating to AWS Secrets Manager today?
+
+Mike Rodriguez: Mostly IAM roles, but some older services are using static API keys. We're on EKS for about 70% of our workloads, and the rest are on EC2. The Kubernetes services use IRSA for AWS auth, but there's no unified identity model across everything.
+
+Tayden Barretto: Got it. So Vault would give you that unified identity layer. For your EKS workloads, we have the Kubernetes auth method which lets pods authenticate using their service account tokens — no additional credentials to manage. For your EC2 instances, we have the AWS auth method that uses the instance metadata. So both paths converge on Vault for secrets access.
+
+Sarah Chen: That sounds good in theory. But we tried to adopt Vault about two years ago and it didn't go well. The team found it too complex to operate, and we ended up rolling back. What's changed since then?
+
+Tayden Barretto: That's really valuable context, Sarah. A lot has actually changed. If you were looking at Vault 1.8 or 1.9, the operational complexity was a valid concern. Since then, HCP Vault — our managed service — removes the operational burden entirely. You don't manage the cluster, upgrades, or HA configuration. Your team just consumes the API. Would a managed service address some of those concerns?
+
+Sarah Chen: Potentially, yes. But we also have compliance requirements that might require us to run it ourselves. We're in fintech, so data residency is a real thing for us.
+
+Tayden Barretto: Understood. HCP Vault does run in your chosen cloud region, and all data stays in-region. But if you need full control, Vault Enterprise with our reference architecture has gotten significantly simpler. We also have Vault Autopilot now which handles automated upgrades and failover. The operational story is much better.
+
+Mike Rodriguez: What about secret rotation? We need to rotate our database credentials automatically. We have about 15 PostgreSQL databases and 8 MySQL databases across our environments.
+
+Tayden Barretto: Perfect use case for the database secrets engine. Instead of rotating static credentials, Vault generates unique, short-lived credentials on demand for each service. When a pod needs database access, it requests credentials from Vault, gets a unique username/password with a configurable TTL — say 24 hours — and Vault automatically revokes them when the lease expires. No more shared credentials, full audit trail, and if there's a breach, the blast radius is limited to that one set of credentials.
+
+Mike Rodriguez: That's interesting. We're also starting to look at Terraform more seriously. Right now we have a mix of Terraform and CloudFormation. Some teams are on Terraform 0.14 — yeah, I know — and others are on 1.5. There's no standard. State files are all over the place, some in S3 buckets, some committed to git repos.
+
+Tayden Barretto: Oh wow, state files in git repos is definitely something we need to address. That's a security risk since state can contain sensitive values, and it also means you're not getting state locking, so concurrent applies could corrupt your state. HCP Terraform — formerly Terraform Cloud — would centralize all of that. Remote state storage with encryption, locking, run history, and you can standardize on a single Terraform version across teams.
+
+Sarah Chen: We also use Datadog and they've been pitching us their infrastructure monitoring for Terraform. How does HCP Terraform compare?
+
+Tayden Barretto: Different tools for different jobs. Datadog is great for runtime monitoring and observability. HCP Terraform is about the provisioning workflow — plan, apply, state management, policy enforcement. They're complementary, not competitive. We actually have a Datadog integration that sends Terraform run events to Datadog, so you get the provisioning context alongside your monitoring data.
+
+Sarah Chen: Good to know. What about pricing? We need to put together a business case for leadership. We're looking at about 500 developers across the organization.
+
+Lisa Park: Great question. I can put together a detailed proposal after this call. For budgetary purposes, Vault Enterprise and HCP Terraform are both consumption-based, so the pricing scales with your usage. I'll send over a rough estimate this week so you can start building the internal business case.
+
+Sarah Chen: That would be helpful. Timeline-wise, we're hoping to make a decision by end of Q1 and start implementation in Q2.
+
+Tayden Barretto: That's a reasonable timeline. I'd suggest we set up a proof of concept focused on your most urgent use case — the secrets management for your EKS workloads. We could have that running in a couple of weeks, which would give your team hands-on experience before making the final decision.
+
+Mike Rodriguez: I'd like that. Can we also get some documentation on the database secrets engine and the Kubernetes auth method? I want to share those with my team.
+
+Tayden Barretto: Absolutely, I'll send those over right after this call.
+
+Sarah Chen: One last thing — we're also evaluating CyberArk for secrets management. How do you see Vault differentiated?
+
+Tayden Barretto: Good question. CyberArk is strong in traditional PAM — privileged access management for human users and sessions. Vault is purpose-built for modern infrastructure secrets — dynamic secrets, API-first design, cloud-native integrations. For your use case with 200 microservices on Kubernetes, Vault is the more natural fit. CyberArk would require significant integration work for machine-to-machine authentication. That said, we have customers who run both — CyberArk for human PAM and Vault for application secrets.
+
+Sarah Chen: That's a clear differentiation. Thanks, this has been really productive.
+
+Lisa Park: Great call, everyone. I'll follow up this week with the pricing estimate and we'll get the POC planning started. Tayden will send the documentation. Does next Tuesday work for a POC scoping call?
+
+Mike Rodriguez: Tuesday works for me.
+
+Sarah Chen: Same here. Looking forward to it.
+
+Lisa Park: Perfect. Thanks, Sarah and Mike!

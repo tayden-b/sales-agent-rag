@@ -1,0 +1,36 @@
+# HashiCorp Terraform Documentation URLs
+# Add one URL per line. Lines starting with # are ignored.
+#
+# Example usage:
+#   python -m src.rag.scrape --product terraform --urls data/terraform_urls.txt
+#
+# Recommended sections to scrape:
+# - State management (backends, locking, remote state)
+# - Modules (structure, registry, versioning)
+# - Workspaces
+# - Terraform Cloud / HCP Terraform features
+# - Providers and provisioners
+# - Language features (resources, data sources, variables, outputs)
+
+# State Management
+https://developer.hashicorp.com/terraform/language/state
+https://developer.hashicorp.com/terraform/language/state/remote
+https://developer.hashicorp.com/terraform/language/state/locking
+https://developer.hashicorp.com/terraform/language/settings/backends/s3
+https://developer.hashicorp.com/terraform/language/settings/backends/azurerm
+
+# Modules
+https://developer.hashicorp.com/terraform/language/modules
+https://developer.hashicorp.com/terraform/language/modules/develop
+https://developer.hashicorp.com/terraform/registry
+https://developer.hashicorp.com/terraform/registry/modules/publish
+
+# Terraform Cloud
+https://developer.hashicorp.com/terraform/cloud-docs
+https://developer.hashicorp.com/terraform/cloud-docs/workspaces
+https://developer.hashicorp.com/terraform/cloud-docs/run/remote-operations
+https://developer.hashicorp.com/terraform/cloud-docs/policy-enforcement
+
+# Workspaces
+https://developer.hashicorp.com/terraform/language/state/workspaces
+https://developer.hashicorp.com/terraform/cli/workspaces

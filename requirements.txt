@@ -1,0 +1,5 @@
+crewai[tools]==1.9.3
+sendgrid>=6.11.0
+beautifulsoup4>=4.12.0
+markdownify>=0.11.0
+requests>=2.31.0

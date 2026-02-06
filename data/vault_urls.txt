@@ -1,0 +1,36 @@
+# HashiCorp Vault Documentation URLs
+# Add one URL per line. Lines starting with # are ignored.
+#
+# Example usage:
+#   python -m src.rag.scrape --product vault --urls data/vault_urls.txt
+#
+# Recommended sections to scrape:
+# - Secrets engines (KV, Database, Transit, PKI, SSH, etc.)
+# - Auth methods (Kubernetes, AWS, AppRole, LDAP, etc.)
+# - Enterprise features (Namespaces, Replication, Sentinel, etc.)
+# - Use cases and tutorials
+# - API documentation
+
+# Secrets Engines
+https://developer.hashicorp.com/vault/docs/secrets/kv
+https://developer.hashicorp.com/vault/docs/secrets/kv/kv-v2
+https://developer.hashicorp.com/vault/docs/secrets/databases
+https://developer.hashicorp.com/vault/docs/secrets/transit
+https://developer.hashicorp.com/vault/docs/secrets/pki
+
+# Auth Methods
+https://developer.hashicorp.com/vault/docs/auth/kubernetes
+https://developer.hashicorp.com/vault/docs/auth/approle
+https://developer.hashicorp.com/vault/docs/auth/aws
+https://developer.hashicorp.com/vault/docs/auth/ldap
+https://developer.hashicorp.com/vault/docs/auth/jwt
+
+# Architecture
+https://developer.hashicorp.com/vault/docs/internals/architecture
+https://developer.hashicorp.com/vault/docs/concepts/seal
+https://developer.hashicorp.com/vault/docs/concepts/ha
+
+# Enterprise
+https://developer.hashicorp.com/vault/docs/enterprise/namespaces
+https://developer.hashicorp.com/vault/docs/enterprise/replication
+https://developer.hashicorp.com/vault/docs/enterprise/sentinel
