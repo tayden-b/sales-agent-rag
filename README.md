@@ -1,122 +1,137 @@
 # Sales Call Intelligence System
 
-An AI-powered system that transforms raw sales call transcripts into actionable intelligence using multi-agent orchestration (CrewAI) and retrieval-augmented generation (RAG).
+An AI-powered system that automatically analyzes sales call transcripts and generates actionable email summaries. Built with multi-agent orchestration and retrieval-augmented generation (RAG) to turn unstructured conversations into structured insights.
 
 ## What It Does
 
-1. **Upload a call transcript** (text file or paste)
-2. **AI agents analyze it:**
-   - Extract structured data (account stage, products, concerns, action items)
-   - Search HashiCorp documentation for relevant solutions
-   - Find similar past calls for context
-   - Compose a professional email summary
-   - Store the transcript for future reference
-3. **Receive a formatted email** with:
-   - Executive summary
-   - Technical concerns matched to documentation
-   - Prioritized action items
-   - Resources to share with the customer
-   - Internal deal health assessment
+Upload a sales call transcript, and the system will:
+- **Extract key information** (account details, technical concerns, action items, sentiment)
+- **Search documentation** to match concerns with relevant resources
+- **Find similar past calls** to identify patterns and proven strategies
+- **Generate a professional email** with executive summary, prioritized actions, and deal health assessment
+- **Store the transcript** in a searchable knowledge base that gets smarter over time
 
-## Setup
+## Why I Built This
 
-### 1. Prerequisites
+After seeing how much time sales engineers spend manually summarizing calls and digging through documentation, I wanted to automate the entire workflow. The challenge was making the system intelligent enough to understand technical conversations and self-improving through accumulated call history.
 
-- **Python 3.12** (CrewAI requires `>=3.10, <3.14`)
-- OpenAI API key
-- (Optional) SendGrid API key for email delivery
+## Technical Architecture
 
-### 2. Installation
+### Multi-Agent System (CrewAI)
+
+I designed five specialized AI agents that work sequentially, each with a focused responsibility:
+
+1. **Transcript Analyzer** - Parses raw call text and extracts structured data (account stage, products discussed, technical concerns with severity levels, action items with ownership)
+2. **Documentation Researcher** - Searches the documentation knowledge base to find relevant resources for each technical concern
+3. **Historical Context Analyst** - Queries past transcripts to surface similar situations and what worked before
+4. **Email Composer** - Synthesizes all information into a clear, actionable email format
+5. **Knowledge Base Updater** - Indexes the current transcript with metadata for future retrieval
+
+Each agent uses GPT-4o-mini for cost-efficient reasoning and is equipped with only the tools it needs to accomplish its specific task.
+
+### RAG Knowledge Base
+
+The system maintains two ChromaDB vector collections:
+
+**hashicorp-docs** - Product documentation indexed and searchable
+- Ingests markdown files from HashiCorp Vault and Terraform documentation
+- Chunks documents intelligently (800 words with 100-word overlap to preserve context)
+- Stores metadata: product, source file, chunk index
+- Enables semantic search: "kubernetes authentication" finds relevant auth methods even if the exact phrase isn't in the docs
+
+**call-transcripts** - Historical call data that grows over time
+- Each processed call gets stored with rich metadata (account name, date, stage, products, sentiment)
+- Becomes searchable by future calls: "Show me similar POC deals with Vault concerns"
+- Creates organizational memory: patterns, successful strategies, common objections
+- Enables context-aware analysis: "We've seen this concern 3 times before, here's what worked"
+
+### Web Scraper for Documentation
+
+Built a custom scraper that:
+- Fetches documentation pages from URLs
+- Extracts main content (strips navigation, footers, ads)
+- Converts HTML to clean markdown
+- Automatically ingests into the vector database
+- Makes it easy to keep documentation up-to-date
+
+You can scrape entire documentation sites by providing a URL list.
+
+### Self-Improving System
+
+The key innovation: **every processed transcript becomes training data for future calls**. The system literally gets smarter with each call you analyze:
+- Call #1: Pure documentation search
+- Call #10: Can reference 9 similar past situations
+- Call #100: Has seen nearly every common objection and knows what works
+
+## Tech Stack
+
+- **Python 3.12** (CrewAI requires <3.14)
+- **CrewAI** - Multi-agent orchestration framework
+- **OpenAI GPT-4o-mini** - Fast, cost-efficient LLM
+- **ChromaDB** - Local vector database with persistent storage
+- **OpenAI text-embedding-3-small** - Semantic embeddings for RAG
+- **SendGrid** - Email delivery (with console preview mode for development)
+- **BeautifulSoup + Markdownify** - Web scraping pipeline
+
+## Installation
 
 ```bash
 # Clone the repo
-git clone <repo-url>
+git clone https://github.com/tayden-b/sales-agent-rag.git
 cd sales-agent-rag
 
-# Create virtual environment with Python 3.12
-/opt/homebrew/bin/python3.12 -m venv venv  # macOS with Homebrew
-# OR: python3.12 -m venv venv
-
-# Activate virtual environment
+# Create virtual environment (must use Python 3.12)
+python3.12 -m venv venv
 source venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
-```
 
-### 3. Configuration
-
-```bash
-# Copy example config
+# Configure environment
 cp .env.example .env
-
-# Edit .env and add your API keys
-nano .env
+# Edit .env and add your OPENAI_API_KEY
 ```
 
-Required:
-```
-OPENAI_API_KEY=your-openai-api-key-here
-```
+## Usage
 
-Optional (for email sending):
-```
-SENDGRID_API_KEY=your-sendgrid-api-key
-EMAIL_FROM=noreply@yourdomain.com
-EMAIL_TO=you@yourdomain.com
-EMAIL_PREVIEW_MODE=true  # Set to false to actually send emails
-```
+### 1. Load Documentation
 
-### 4. Ingest Documentation
-
-#### Option A: Use Pre-Included Sample Docs
-
+**Option A:** Use the pre-included sample docs
 ```bash
 python -m src.rag.ingest
 ```
 
-This will index the 5 sample documentation files in `data/docs/`.
-
-#### Option B: Scrape Live HashiCorp Documentation
-
+**Option B:** Scrape live documentation from URLs
 ```bash
-# Scrape Vault documentation
+# Edit data/vault_urls.txt or data/terraform_urls.txt with documentation URLs
 python -m src.rag.scrape --product vault --urls data/vault_urls.txt
-
-# Scrape Terraform documentation
 python -m src.rag.scrape --product terraform --urls data/terraform_urls.txt
 ```
 
-The scraper will:
-- Fetch each URL
-- Extract the main content
-- Convert to markdown
-- Save to `data/docs/{product}/`
-- Automatically ingest into ChromaDB
+The scraper handles everything: fetch → extract → convert → ingest.
 
-**Add your own URLs:**
-Edit `data/vault_urls.txt` or `data/terraform_urls.txt` and add one URL per line.
-
-## Usage
-
-### Process a Transcript from a File
+### 2. Process a Transcript
 
 ```bash
-python -m src.main --file data/sample_transcripts/acme-corp-evaluation.txt
-```
+# From a file
+python -m src.main --file path/to/transcript.txt
 
-### Paste a Transcript Interactively
-
-```bash
+# Or paste interactively
 python -m src.main --paste
-# Paste your transcript, then press Ctrl+D (Unix) or Ctrl+Z (Windows)
 ```
 
-### Output
+The system will:
+- Analyze the call (~20-30 seconds)
+- Search documentation (~10-15 seconds)
+- Check historical context (~5-10 seconds)
+- Generate email (~15-20 seconds)
+- Store transcript for future use (~5 seconds)
 
-With `EMAIL_PREVIEW_MODE=true` (default), the email will be printed to the console.
+**Total time:** ~60-90 seconds for a typical transcript.
 
-With `EMAIL_PREVIEW_MODE=false`, the email will be sent via SendGrid to `EMAIL_TO`.
+### 3. Review the Email
+
+By default, `EMAIL_PREVIEW_MODE=true` prints the email to your console. To send real emails via SendGrid, set it to `false` in your `.env` file.
 
 ## Project Structure
 
@@ -124,66 +139,56 @@ With `EMAIL_PREVIEW_MODE=false`, the email will be sent via SendGrid to `EMAIL_T
 sales-agent-rag/
 ├── src/
 │   ├── main.py              # CLI entry point
-│   ├── config.py            # Configuration management
-│   ├── agents/              # 5 CrewAI agents
-│   │   ├── transcript_analyzer.py
-│   │   ├── doc_researcher.py
-│   │   ├── historical_analyst.py
-│   │   ├── email_composer.py
-│   │   └── knowledge_updater.py
-│   ├── tools/               # CrewAI tools for RAG operations
-│   │   ├── doc_search.py
-│   │   ├── transcript_search.py
-│   │   └── vector_store.py
-│   ├── rag/                 # RAG infrastructure
+│   ├── config.py            # Environment configuration
+│   ├── agents/              # 5 specialized CrewAI agents
+│   ├── tools/               # RAG search and storage tools
+│   ├── rag/                 # Vector database infrastructure
 │   │   ├── database.py      # ChromaDB client
-│   │   ├── ingest.py        # Document ingestion
+│   │   ├── ingest.py        # Document ingestion pipeline
 │   │   ├── search.py        # Semantic search
 │   │   └── scrape.py        # Web scraper
-│   ├── email/               # Email generation
-│   │   ├── templates.py
-│   │   └── sender.py
+│   ├── email/               # Email generation and sending
 │   └── crew/
 │       └── pipeline.py      # Multi-agent orchestration
 ├── data/
-│   ├── docs/                # Documentation for RAG
-│   │   ├── vault/
-│   │   └── terraform/
-│   ├── sample_transcripts/  # Sample call transcripts
-│   ├── vault_urls.txt       # URLs to scrape for Vault docs
-│   └── terraform_urls.txt   # URLs to scrape for Terraform docs
-├── tests/                   # Unit tests
-├── PRD.md                   # Product requirements
-├── CLAUDE.md                # Architecture & decisions
-└── PROGRESS.md              # Development progress
-
+│   ├── docs/                # Documentation files for RAG
+│   │   ├── vault/           # HashiCorp Vault docs
+│   │   └── terraform/       # Terraform docs
+│   ├── vault_urls.txt       # URLs to scrape (Vault)
+│   └── terraform_urls.txt   # URLs to scrape (Terraform)
+└── tests/                   # Unit tests
 ```
 
-## Architecture
+## Key Features
 
-### Multi-Agent Pipeline
+### Intelligent Document Chunking
+- 800-word chunks with 100-word overlap preserve context across boundaries
+- Never cuts mid-sentence
+- Maintains semantic coherence for better retrieval
 
-Five specialized agents work sequentially:
+### Metadata-Rich Indexing
+- Every document chunk: product, source file, chunk index
+- Every transcript: account, date, stage, products, sentiment
+- Enables filtered searches: "Find Vault docs about Kubernetes auth"
 
-1. **Transcript Analyzer**: Extracts structured data (account stage, products, concerns, action items, sentiment)
-2. **Documentation Researcher**: Searches HashiCorp docs for relevant information
-3. **Historical Context Analyst**: Finds similar past calls and patterns
-4. **Email Composer**: Synthesizes everything into a professional email
-5. **Knowledge Base Updater**: Stores the transcript for future reference
+### Context-Aware Analysis
+- Searches past calls by stage: "Show me other POC deals"
+- Filters by product: "Find calls where Terraform was discussed"
+- Sentiment matching: "Any cautious/at-risk deals we turned around?"
 
-### RAG System
+### Structured Output Format
+The generated email follows a consistent template:
+- Executive Summary (3-4 key takeaways)
+- Technical Concerns & Documentation (each concern with context, docs, recommendations)
+- Recommended Next Steps (prioritized with ownership)
+- Resources to Share with Customer
+- Internal Notes (deal health, risks, patterns)
 
-- **Vector Database**: ChromaDB (local, persistent)
-- **Collections**:
-  - `hashicorp-docs`: Pre-populated documentation
-  - `call-transcripts`: Grows with each processed call
-- **Embeddings**: OpenAI `text-embedding-3-small`
-- **Search**: Semantic similarity + metadata filtering
-
-### LLM
-
-- **Model**: OpenAI `gpt-4o-mini` (cost-efficient, fast)
-- **Framework**: CrewAI for agent orchestration
+### Extensible Design
+- Add new agents by creating a new file in `src/agents/`
+- Add new tools by implementing the CrewAI tool interface
+- Expand documentation sources by adding URLs to the scraper
+- Customize email format in `src/email/templates.py`
 
 ## Testing
 
@@ -194,56 +199,55 @@ pytest tests/ -v
 # Test document ingestion
 python -m src.rag.ingest
 
-# Process the sample transcript
-python -m src.main --file data/sample_transcripts/acme-corp-evaluation.txt
+# Test with a sample transcript (create your own in data/)
+python -m src.main --file data/your_transcript.txt
 ```
 
-## Development
+## How the RAG System Works
 
-See `PROGRESS.md` for development status and `CLAUDE.md` for detailed architecture decisions.
+### Ingestion Pipeline
+1. Read documentation files (markdown/text)
+2. Split into overlapping chunks for context preservation
+3. Generate embeddings using OpenAI's text-embedding-3-small
+4. Store in ChromaDB with metadata
 
-## Troubleshooting
+### Search Pipeline
+1. User query: "secrets management for kubernetes"
+2. Generate query embedding
+3. Semantic similarity search across vector space
+4. Filter by metadata (product, stage, etc.)
+5. Return top-k results with relevance scores
 
-### Python Version Issues
-
-CrewAI requires Python `>=3.10, <3.14`. If you have Python 3.14 (default on some systems), explicitly use 3.12:
-
-```bash
-# Find Python 3.12
-which python3.12
-
-# Create venv with Python 3.12
-/opt/homebrew/bin/python3.12 -m venv venv
-```
-
-### Dependency Conflicts
-
-CrewAI pins specific versions of its dependencies. Let it manage them — don't pin `chromadb`, `openai`, `pydantic`, or `python-dotenv` separately.
-
-### Empty ChromaDB
-
-If searches return no results, you may need to ingest documentation:
-
-```bash
-python -m src.rag.ingest
-```
-
-### Scraper Errors
-
-If the scraper fails to extract content, the page structure may have changed. Check:
-- Is the URL accessible?
-- Does the page load in a browser?
-- Try adding site-specific extraction rules in `src/rag/scrape.py`
+### Self-Improvement Loop
+1. Process call → Generate analysis
+2. Store analysis with metadata
+3. Future calls query past transcripts
+4. System learns patterns over time
+5. Better recommendations with each iteration
 
 ## Future Enhancements
 
-- Web UI (Streamlit/FastAPI)
-- CRM integration (Salesforce, HubSpot)
-- Call recording ingestion (Whisper API)
-- Competitive intelligence database
-- Team analytics dashboard
-- Slack/Teams integration
+- **Web UI** - Streamlit dashboard for transcript upload and analysis
+- **Real-time transcription** - Integrate Whisper API for audio → text
+- **CRM integration** - Push deal health and actions to Salesforce
+- **Team analytics** - Aggregate insights across all calls
+- **Competitive intelligence** - Dedicated analysis for competitor mentions
+- **Slack/Teams bots** - Post summaries to channels automatically
+
+## Why This Approach Works
+
+**Multi-agent > single LLM**: Breaking the task into specialized agents produces higher-quality output than asking one LLM to "do everything." Each agent has focused instructions and only the tools it needs.
+
+**RAG > fine-tuning**: Fine-tuning is expensive and becomes stale. RAG stays current — just update the documentation and it immediately improves responses.
+
+**ChromaDB > cloud vector DB**: For a portfolio project, local storage is simpler, free, and sufficient. Production scale would use Pinecone or Weaviate.
+
+**Sequential > parallel**: While parallel agents are faster, sequential processing is more reliable when tasks depend on previous outputs (email composition needs the research results).
 
 ## License
 
 MIT
+
+---
+
+Built to demonstrate AI engineering: multi-agent systems, RAG architecture, and practical automation of real business workflows.

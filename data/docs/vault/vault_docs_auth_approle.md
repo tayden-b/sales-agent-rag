@@ -1,0 +1,448 @@
+# Source: https://developer.hashicorp.com/vault/docs/auth/approle
+
+v1.21.x (latest)
+
+- Vault
+- [v1.20.x](/vault/docs/v1.20.x/auth/approle)
+- [v1.19.x](/vault/docs/v1.19.x/auth/approle)
+- [v1.18.x](/vault/docs/v1.18.x/auth/approle)
+- [v1.17.x](/vault/docs/v1.17.x/auth/approle)
+- [v1.16.x](/vault/docs/v1.16.x/auth/approle)
+- ---
+- No versions of this document exist before v1.16.x. Click below to redirect to the version homepage.
+- [v1.15.x](/vault/docs/v1.15.x)
+- [v1.14.x](/vault/docs/v1.14.x)
+- [v1.13.x](/vault/docs/v1.13.x)
+- [v1.12.x](/vault/docs/v1.12.x)
+- [v1.11.x](/vault/docs/v1.11.x)
+- [v1.10.x](/vault/docs/v1.10.x)
+- [v1.9.x](/vault/docs/v1.9.x)
+- [v1.8.x](/vault/docs/v1.8.x)
+- [v1.7.x](/vault/docs/v1.7.x)
+- [v1.6.x](/vault/docs/v1.6.x)
+- [v1.5.x](/vault/docs/v1.5.x)
+- [v1.4.x](/vault/docs/v1.4.x)
+
+# Use AppRole authentication
+
+The `approle` auth method allows machines or *apps* to authenticate with
+Vault-defined *roles*. The open design of `AppRole` enables a varied set of
+workflows and configurations to handle large numbers of apps. This auth method
+is oriented to automated workflows (machines and services), and is less useful
+for human operators. We recommend using `batch` tokens with the
+`AppRole` auth method.
+
+An "AppRole" represents a set of Vault policies and login constraints that must
+be met to receive a token with those policies. The scope can be as narrow or
+broad as desired. An AppRole can be created for a particular machine, or even
+a particular user on that machine, or a service spread across machines. The
+credentials required for successful login depend upon the constraints set on
+the AppRole associated with the credentials.
+
+## Authentication
+
+### Via the CLI
+
+The default path is `/approle`. If this auth method was enabled at a different
+path, specify `auth/my-path/login` instead.
+
+```
+$ vault write auth/approle/login \
+    role_id=db02de05-fa39-4855-059b-67221c5c2f63 \
+    secret_id=6a174c20-f6de-a53c-74d2-6018fcceff64
+
+Key                Value
+---                -----
+token              65b74ffd-842c-fd43-1386-f7d7006e520a
+token_accessor     3c29bc22-5c72-11a6-f778-2bc8f48cea0e
+token_duration     20m0s
+token_renewable    true
+token_policies     [default]
+```
+
+### Via the API
+
+The default endpoint is `auth/approle/login`. If this auth method was enabled
+at a different path, use that value instead of `approle`.
+
+```
+$ curl \
+    --request POST \
+    --data '{"role_id":"988a9df-...","secret_id":"37b74931..."}' \
+    http://127.0.0.1:8200/v1/auth/approle/login
+```
+
+The response will contain the token at `auth.client_token`:
+
+```
+{
+  "auth": {
+    "renewable": true,
+    "lease_duration": 2764800,
+    "metadata": {},
+    "policies": ["default", "dev-policy", "test-policy"],
+    "accessor": "5d7fb475-07cb-4060-c2de-1ca3fcbf0c56",
+    "client_token": "98a4c7ab-b1fe-361b-ba0b-e307aacfd587"
+  }
+}
+```
+
+**Application Integration:** See the [Code Example](/vault/docs/auth/approle#code-example) section
+for a code snippet demonstrating the authentication with Vault using the
+AppRole auth method.
+
+## Configuration
+
+Auth methods must be configured in advance before users or machines can
+authenticate. These steps are usually completed by an operator or configuration
+management tool.
+
+### Via the CLI
+
+1. Enable the AppRole auth method:
+
+   ```
+   $ vault auth enable approle
+   ```
+2. Create a named role:
+
+   ```
+   $ vault write auth/approle/role/my-role \
+       token_type=batch \
+       secret_id_ttl=10m \
+       token_ttl=20m \
+       token_max_ttl=30m \
+       secret_id_num_uses=40
+   ```
+
+**Note:** If the token issued by your approle needs the ability to create child tokens, you will need to set token\_num\_uses to 0.
+
+For the complete list of configuration options, please see the API
+documentation.
+
+1. Fetch the RoleID of the AppRole:
+
+   ```
+   $ vault read auth/approle/role/my-role/role-id
+   role_id     db02de05-fa39-4855-059b-67221c5c2f63
+   ```
+2. Get a SecretID issued against the AppRole:
+
+   ```
+   $ vault write -f auth/approle/role/my-role/secret-id
+   secret_id               6a174c20-f6de-a53c-74d2-6018fcceff64
+   secret_id_accessor      c454f7e5-996e-7230-6074-6ef26b7bcf86
+   secret_id_ttl           10m
+   secret_id_num_uses      40
+   ```
+
+### Via the API
+
+1. Enable the AppRole auth method:
+
+   ```
+   $ curl \
+       --header "X-Vault-Token: ..." \
+       --request POST \
+       --data '{"type": "approle"}' \
+       http://127.0.0.1:8200/v1/sys/auth/approle
+   ```
+2. Create an AppRole with desired set of policies:
+
+   ```
+   $ curl \
+       --header "X-Vault-Token: ..." \
+       --request POST \
+       --data '{"policies": "dev-policy,test-policy", "token_type": "batch"}' \
+       http://127.0.0.1:8200/v1/auth/approle/role/my-role
+   ```
+3. Fetch the identifier of the role:
+
+   ```
+   $ curl \
+       --header "X-Vault-Token: ..." \
+       http://127.0.0.1:8200/v1/auth/approle/role/my-role/role-id
+   ```
+
+   The response will look like:
+
+   ```
+   {
+     "data": {
+       "role_id": "988a9dfd-ea69-4a53-6cb6-9d6b86474bba"
+     }
+   }
+   ```
+4. Create a new secret identifier under the role:
+
+   ```
+   $ curl \
+       --header "X-Vault-Token: ..." \
+       --request POST \
+        http://127.0.0.1:8200/v1/auth/approle/role/my-role/secret-id
+   ```
+
+   The response will look like:
+
+   ```
+   {
+     "data": {
+       "secret_id_accessor": "45946873-1d96-a9d4-678c-9229f74386a5",
+       "secret_id": "37b74931-c4cd-d49a-9246-ccc62d682a25",
+       "secret_id_ttl": 600,
+       "secret_id_num_uses": 40
+     }
+   }
+   ```
+
+## Credentials/Constraints
+
+### RoleID
+
+RoleID is an identifier that selects the AppRole against which the other
+credentials are evaluated. When authenticating against this auth method's login
+endpoint, the RoleID is a required argument (via `role_id`) at all times. By
+default, RoleIDs are unique UUIDs, which allow them to serve as secondary
+secrets to the other credential information. However, they can be set to
+particular values to match introspected information by the client (for
+instance, the client's domain name).
+
+### SecretID
+
+SecretID is a credential that is required by default for any login (via
+`secret_id`) and is intended to always be secret. (For advanced usage,
+requiring a SecretID can be disabled via an AppRole's `bind_secret_id`
+parameter, allowing machines with only knowledge of the RoleID, or matching
+other set constraints, to fetch a token). SecretIDs can be created against an
+AppRole either via generation of a 128-bit purely random UUID by the role
+itself (`Pull` mode) or via specific, custom values (`Push` mode). Similarly to
+tokens, SecretIDs have properties like usage-limit, TTLs and expirations.
+
+#### Pull and push SecretID modes
+
+If the SecretID used for login is fetched from an AppRole, this is operating in
+Pull mode. If a "custom" SecretID is set against an AppRole by the client, it
+is referred to as a Push mode. Push mode mimics the behavior of the deprecated
+App-ID auth method; however, in most cases Pull mode is the better approach. The
+reason is that Push mode requires some other system to have knowledge of the
+full set of client credentials (RoleID and SecretID) in order to create the
+entry, even if these are then distributed via different paths. However, in Pull
+mode, even though the RoleID must be known in order to distribute it to the
+client, the SecretID can be kept confidential from all parties except for the
+final authenticating client by using [Response Wrapping](/vault/docs/concepts/response-wrapping).
+
+Push mode is available for App-ID workflow compatibility, which in some
+specific cases is preferable, but in most cases Pull mode is more secure and
+should be preferred.
+
+### Further constraints
+
+`role_id` is a required credential at the login endpoint. AppRole pointed to by
+the `role_id` will have constraints set on it. This dictates other `required`
+credentials for login. The `bind_secret_id` constraint requires `secret_id` to
+be presented at the login endpoint. Going forward, this auth method can support
+more constraint parameters to support varied set of Apps. Some constraints will
+not require a credential, but still enforce constraints for login. For
+example, `secret_id_bound_cidrs` will only allow logins coming from IP addresses
+belonging to configured CIDR blocks on the AppRole.
+
+## Tutorial
+
+Refer to the following tutorials to learn more:
+
+- [AppRole Pull Authentication](/vault/tutorials/auth-methods/approle) tutorial
+  to learn how to use the AppRole auth method to generate tokens for machines or
+  apps.
+- [AppRole usage best
+  practices](/vault/tutorials/auth-methods/approle-best-practices) to understand
+  the recommendation for distributing the AppRole credentials to the target
+  Vault clients.
+
+## User lockout
+
+If a user provides bad credentials several times in quick succession,
+Vault will stop trying to validate their credentials for a while, instead returning immediately
+with a permission denied error. We call this behavior "user lockout". The time for which
+a user will be locked out is called “lockout duration”. The user will be able to login after the lockout
+duration has passed. The number of failed login attempts after which the user is locked out is called
+“lockout threshold”. The lockout threshold counter is reset to zero after a few minutes without login attempts,
+or upon a successful login attempt. The duration after which the counter will be reset to zero
+after no login attempts is called "lockout counter reset". This can defeat both automated and targeted requests
+i.e, user-based password guessing attacks as well as automated attacks.
+
+Note
+
+User lockout occurs early in request processing and may leak
+information about the validity or existence of valid, existing user account
+names.
+
+The user lockout feature is enabled by default. The default values for "lockout threshold" is 5 attempts,
+"lockout duration" is 15 minutes, "lockout counter reset" is 15 minutes.
+
+The user lockout feature can be disabled as follows:
+
+- It can be disabled globally using environment variable `VAULT_DISABLE_USER_LOCKOUT`.
+- It can be disabled for all supported auth methods (ldap, userpass and approle) or a specific supported auth method using the `disable_lockout`
+  parameter within `user_lockout` stanza in configuration file.
+  Please see [user lockout configuration](/vault/docs/configuration/user-lockout#user_lockout-stanza) for more details.
+- It can be disabled for a specific auth mount using "auth tune". Please see [auth tune command](/vault/docs/commands/auth/tune)
+  or [auth tune api](/vault/api-docs/system/auth#tune-auth-method) for more details.
+
+**NOTE**: This feature is available from Vault version 1.13 and is only supported by the userpass, ldap, and approle auth methods.
+
+## API
+
+The AppRole auth method has a full HTTP API. Please see the
+[AppRole API](/vault/api-docs/auth/approle) for more
+details.
+
+## Code example
+
+The following example demonstrates AppRole authentication with response
+wrapping.
+
+GoC#
+
+```
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+
+    vault "github.com/hashicorp/vault/api"
+    auth "github.com/hashicorp/vault/api/auth/approle"
+)
+
+// Fetches a key-value secret (kv-v2) after authenticating via AppRole.
+func getSecretWithAppRole() (string, error) {
+    config := vault.DefaultConfig() // modify for more granular configuration
+
+    client, err := vault.NewClient(config)
+    if err != nil {
+        return "", fmt.Errorf("unable to initialize Vault client: %w", err)
+    }
+
+    // A combination of a Role ID and Secret ID is required to log in to Vault
+    // with an AppRole.
+    // First, let's get the role ID given to us by our Vault administrator.
+    roleID := os.Getenv("APPROLE_ROLE_ID")
+    if roleID == "" {
+        return "", fmt.Errorf("no role ID was provided in APPROLE_ROLE_ID env var")
+    }
+
+    // The Secret ID is a value that needs to be protected, so instead of the
+    // app having knowledge of the secret ID directly, we have a trusted orchestrator (https://learn.hashicorp.com/tutorials/vault/secure-introduction?in=vault/app-integration#trusted-orchestrator)
+    // give the app access to a short-lived response-wrapping token (https://developer.hashicorp.com/vault/docs/concepts/response-wrapping).
+    // Read more at: https://learn.hashicorp.com/tutorials/vault/approle-best-practices?in=vault/auth-methods#secretid-delivery-best-practices
+    secretID := &auth.SecretID{FromFile: "path/to/wrapping-token"}
+
+    appRoleAuth, err := auth.NewAppRoleAuth(
+        roleID,
+        secretID,
+        auth.WithWrappingToken(), // Only required if the secret ID is response-wrapped.
+    )
+    if err != nil {
+        return "", fmt.Errorf("unable to initialize AppRole auth method: %w", err)
+    }
+
+    authInfo, err := client.Auth().Login(context.Background(), appRoleAuth)
+    if err != nil {
+        return "", fmt.Errorf("unable to login to AppRole auth method: %w", err)
+    }
+    if authInfo == nil {
+        return "", fmt.Errorf("no auth info was returned after login")
+    }
+
+    // get secret from the default mount path for KV v2 in dev mode, "secret"
+    secret, err := client.KVv2("secret").Get(context.Background(), "creds")
+    if err != nil {
+        return "", fmt.Errorf("unable to read secret: %w", err)
+    }
+
+    // data map can contain more than one key-value pair,
+    // in this case we're just grabbing one of them
+    value, ok := secret.Data["password"].(string)
+    if !ok {
+        return "", fmt.Errorf("value type assertion failed: %T %#v", secret.Data["password"], secret.Data["password"])
+    }
+
+    return value, nil
+}
+```
+
+```
+using System;
+using System.Collections.Generic;
+using System.IO;
+using VaultSharp;
+using VaultSharp.V1.AuthMethods;
+using VaultSharp.V1.AuthMethods.AppRole;
+using VaultSharp.V1.AuthMethods.Token;
+using VaultSharp.V1.Commons;
+
+namespace Examples
+{
+    public class ApproleAuthExample
+    {
+        const string DefaultTokenPath = "../../../path/to/wrapping-token";
+
+        /// <summary>
+        /// Fetches a key-value secret (kv-v2) after authenticating to Vault via AppRole authentication
+        /// </summary>
+        public string GetSecretWithAppRole()
+        {
+            // A combination of a Role ID and Secret ID is required to log in to Vault with an AppRole.
+            // The Secret ID is a value that needs to be protected, so instead of the app having knowledge of the secret ID directly,
+            // we have a trusted orchestrator (https://developer.hashicorp.com/vault/tutorials/app-integration/secure-introduction?in=vault%2Fapp-integration#trusted-orchestrator)
+            // give the app access to a short-lived response-wrapping token (https://developer.hashicorp.com/vault/docs/concepts/response-wrapping).
+            // Read more at: https://learn.hashicorp.com/tutorials/vault/approle-best-practices?in=vault/auth-methods#secretid-delivery-best-practices
+            var vaultAddr = Environment.GetEnvironmentVariable("VAULT_ADDR");
+            if(String.IsNullOrEmpty(vaultAddr))
+            {
+                throw new System.ArgumentNullException("Vault Address");
+            }
+
+            var roleId = Environment.GetEnvironmentVariable("APPROLE_ROLE_ID");
+            if(String.IsNullOrEmpty(roleId))
+            {
+                throw new System.ArgumentNullException("AppRole Role Id");
+            }
+            // Get the path to wrapping token or fall back on default path
+            string pathToToken = !String.IsNullOrEmpty(Environment.GetEnvironmentVariable("WRAPPING_TOKEN_PATH")) ? Environment.GetEnvironmentVariable("WRAPPING_TOKEN_PATH") : DefaultTokenPath;
+            string wrappingToken = File.ReadAllText(pathToToken); // placed here by a trusted orchestrator
+
+            // We need to create two VaultClient objects for authenticating via AppRole. The first is for
+            // using the unwrap utility. We need to initialize the client with the wrapping token.
+            IAuthMethodInfo wrappedTokenAuthMethod = new TokenAuthMethodInfo(wrappingToken);
+            var vaultClientSettingsForUnwrapping = new VaultClientSettings(vaultAddr, wrappedTokenAuthMethod);
+
+            IVaultClient vaultClientForUnwrapping = new VaultClient(vaultClientSettingsForUnwrapping);
+
+            // We pass null here instead of the wrapping token to avoid depleting its single usage
+            // given that we already initialized our client with the wrapping token
+            Secret<Dictionary<string, object>> secretIdData =  vaultClientForUnwrapping.V1.System
+                .UnwrapWrappedResponseDataAsync<Dictionary<string, object>>(null).Result;
+
+            var secretId = secretIdData.Data["secret_id"]; // Grab the secret_id
+
+            // We create a second VaultClient and initialize it with the AppRole auth method and our new credentials.
+            IAuthMethodInfo authMethod = new AppRoleAuthMethodInfo(roleId, secretId.ToString());
+            var vaultClientSettings = new VaultClientSettings(vaultAddr, authMethod);
+
+            IVaultClient vaultClient = new VaultClient(vaultClientSettings);
+
+            // We can retrieve the secret from VaultClient
+            Secret<SecretData> kv2Secret = null;
+            kv2Secret = vaultClient.V1.Secrets.KeyValue.V2.ReadSecretAsync(path: "/creds").Result;
+
+            var password = kv2Secret.Data.Data["password"];
+
+            return password.ToString();
+        }
+    }
+}
+```
+
+[Edit this page on GitHub](https://github.com/hashicorp/web-unified-docs/blob/main/content/vault/v1.21.x/content/docs/auth/approle/index.mdx)

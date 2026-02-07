@@ -1,0 +1,219 @@
+# Source: https://developer.hashicorp.com/vault/docs/enterprise/sentinel
+
+v1.21.x (latest)
+
+- Vault
+- [v1.20.x](/vault/docs/v1.20.x/enterprise/sentinel)
+- [v1.19.x](/vault/docs/v1.19.x/enterprise/sentinel)
+- [v1.18.x](/vault/docs/v1.18.x/enterprise/sentinel)
+- [v1.17.x](/vault/docs/v1.17.x/enterprise/sentinel)
+- [v1.16.x](/vault/docs/v1.16.x/enterprise/sentinel)
+- ---
+- No versions of this document exist before v1.16.x. Click below to redirect to the version homepage.
+- [v1.15.x](/vault/docs/v1.15.x)
+- [v1.14.x](/vault/docs/v1.14.x)
+- [v1.13.x](/vault/docs/v1.13.x)
+- [v1.12.x](/vault/docs/v1.12.x)
+- [v1.11.x](/vault/docs/v1.11.x)
+- [v1.10.x](/vault/docs/v1.10.x)
+- [v1.9.x](/vault/docs/v1.9.x)
+- [v1.8.x](/vault/docs/v1.8.x)
+- [v1.7.x](/vault/docs/v1.7.x)
+- [v1.6.x](/vault/docs/v1.6.x)
+- [v1.5.x](/vault/docs/v1.5.x)
+- [v1.4.x](/vault/docs/v1.4.x)
+
+# Manage Vault policies with Sentinel
+
+Enterprise
+
+Appropriate [Vault Enterprise](https://www.hashicorp.com/products/vault/pricing) license or [HCP Vault Dedicated](/hcp/docs/vault/tiers-and-features) cluster required.
+
+Vault Enterprise integrates HashiCorp Sentinel to provide a rich set of access
+control functionality. Because Vault is a security-focused product trusted with
+high-risk secrets and assets, and because of its default-deny stance,
+integration with Vault is implemented in a defense-in-depth fashion. This takes
+the form of multiple types of policies and a fixed evaluation order.
+
+## Policy types
+
+Vault's policy system has been expanded to support three types of policies:
+
+- [`ACLs`](/vault/docs/enterprise/sentinel#acls) - These are the [traditional Vault
+  policies](/vault/docs/concepts/policies) and remain unchanged.
+- [`Role Governing Policies (RGPs)`](/vault/docs/enterprise/sentinel#role-governing-policies-rgps) - RGPs are Sentinel policies that are tied
+  to particular tokens, Identity entities, or Identity groups. They have access
+  to a rich set of controls across various aspects of Vault.
+- [`Endpoint Governing Policies (EGPs)`](/vault/docs/enterprise/sentinel#endpoint-governing-policies-egps) - EGPs are Sentinel policies that are
+  tied to particular paths instead of tokens. They have access to as much
+  request information as possible, but they can take effect even on
+  unauthenticated paths, such as login paths.
+
+Not every unauthenticated path supports EGPs. For instance, the paths related
+to root token generation cannot support EGPs because it's already the mechanism
+of last resort if, for instance, all clients are locked out of Vault due to
+misconfigured EGPs.
+
+Like with ACLs, [root tokens](/vault/docs/concepts/tokens#root-tokens)
+are not subject to Sentinel policy checks.
+
+Sentinel execution should be considered to be significantly slower than normal
+ACL policy checking. If high performance is needed, testing should be performed
+appropriately when introducing Sentinel policies.
+
+### Policy enforcement levels
+
+Sentinel policies have three enforcement levels to choose from.
+
+| Level | Description |
+| --- | --- |
+| advisory | The policy is allowed to fail. Can be used as a tool to educate new users. |
+| soft-mandatory | The policy must pass unless an [override](/vault/docs/enterprise/sentinel#policy-overriding) is specified. |
+| hard-mandatory | The policy must pass. |
+
+## Policy evaluation
+
+Vault evaluates incoming requests against policies of all types that are
+applicable.
+
+![Policy evaluation](https://web-unified-docs-hashicorp.vercel.app/api/assets/vault/latest/img/diagram-policy-evaluation-workflow_light.png#light-theme-only)
+![Policy evaluation](https://web-unified-docs-hashicorp.vercel.app/api/assets/vault/latest/img/diagram-policy-evaluation-workflow_dark.png#dark-theme-only)
+
+1. If the request is unauthenticated, skip to evaluating the EGPs. Otherwise,
+   evaluate the token's ACL policies. These must grant access; as always, a
+   failure to be granted capabilities on a path via ACL policies denies the
+   request.
+2. Evaluate RGPs attached to the client token. All policies must pass according
+   to their enforcement level.
+3. Evaluate EGPs set on the requested path, and any prefix-matching EGPs set on
+   less-specific paths, are evaluated. All policies must pass according to their
+   enforcement level.
+
+Any failure at any of these steps results in a denied request.
+
+### RGPs and namespaces
+
+Policies, auth methods, secrets engines, and tokens are locked into the
+[namespace](/vault/docs/enterprise/namespaces) they are created in. However,
+identity groups can pull in entities and groups from other namespaces.
+
+Tip
+
+Refer to the [Set up entities and groups section of the Secure Multi-Tenancy
+with Namespaces
+tutorial](/vault/tutorials/enterprise/namespaces#set-up-entities-and-groups) for
+a step-by-step instruction.
+
+Warning
+
+As of the following versions, Vault only applies RPGs derived from identity
+group membership to entities in child namespaces:
+
+- [`1.15.0+`](/vault/docs/enterprise/sentinel#1-15-0)
+- [`1.14.4+`](/vault/docs/enterprise/sentinel#1-14-4)
+- [`1.13.8+`](/vault/docs/enterprise/sentinel#1-13-8)
+
+The scenarios below describe the relevant changes in more detail.
+
+#### Versions 1.15.0, 1.14.4, 1.13.8, and later
+
+The training namespace is a child namespace of the education namespace. The "Sun
+Shine" entity created in the training namespace is a member of the "Tester"
+group which is defined in the education namespace. The group members inherit the
+group-level policy.
+
+![Relationship](https://web-unified-docs-hashicorp.vercel.app/api/assets/vault/latest/img/diagram-rgp-namespace-post-115_light.png#light-theme-only)
+![Relationship](https://web-unified-docs-hashicorp.vercel.app/api/assets/vault/latest/img/diagram-rgp-namespace-post-115_dark.png#dark-theme-only)
+
+#### Versions 1.15.0-rc1, 1.14.3, 1.13.7, and earlier
+
+The training namespace is a child namespace of the education namespace. The "Sun
+Shine" entity created in the education namespace is a member of the "Tester"
+group which is defined in the training namespace. The group members inherit the
+group-level policy.
+
+![Relationship](https://web-unified-docs-hashicorp.vercel.app/api/assets/vault/latest/img/diagram-rgp-namespace-pre-115_light.png#light-theme-only)
+![Relationship](https://web-unified-docs-hashicorp.vercel.app/api/assets/vault/latest/img/diagram-rgp-namespace-pre-115_dark.png#dark-theme-only)
+
+While ACL policies and EGPs set rules on a specific path, an RGP does not
+specify a target path. RGPs are tied to tokens, identity entities, or identity
+groups that you can write rules without specifying a path.
+
+What if the deny-all RGP in the training namespace looked like:
+
+deny-all.sentinel
+
+```
+precond = rule {
+   identity.entity.metadata.org_id is "A012345X"
+}
+
+main = rule when precond {
+   false
+}
+```
+
+Vault checks the requesting token's entity metadata. If the `org_id` metadata
+exists and the value is `A012345X`, the request gets denied because the
+enforcement level is hard-mandatory. It does not matter if the request invokes a
+path starts with `/education` or `/education/training`, or even `/foo` because
+there is no path associated with the deny-all RGP.
+
+## Policy overriding
+
+Vault supports normal Sentinel overriding behavior. Requests to override can be
+specified on the command line via the `policy-override` flag or in HTTP
+requests by setting the `X-Vault-Policy-Override` header to `true`.
+
+Override requests are visible in Vault's audit log; in addition, override
+requests and their eventual status (whether they ended up being required) are
+logged as warnings in Vault's server logs.
+
+## MFA
+
+Sentinel policies support the [Identity-based MFA
+system](/vault/docs/enterprise/mfa) in Vault Enterprise. Within a single
+request, multiple checks of any named MFA method will only trigger
+authentication behavior for that method once, regardless of whether its
+validity is checked via ACLs, RGPs, or EGPs.
+
+EGPs can be used to require MFA on otherwise unauthenticated paths, such as
+login paths. On such paths, the request data will perform a lookahead to try to
+discover the appropriate Identity information to use for MFA. It may be
+necessary to pre-populate Identity entries or supply additional parameters with
+the request if you require more information to use MFA than the endpoint is
+able to glean from the original request alone.
+
+# Using Sentinel
+
+## Configuration
+
+Sentinel policies can be configured via the `sys/policies/rgp/` and
+`sys/policies/egp/` endpoints; see [the
+documentation](/vault/api-docs/system/policies) for more information.
+
+Once set, RGPs can be assigned to Identity entities and groups or to tokens
+just like ACL policies. As a result, they cannot share names with ACL policies.
+
+When setting an EGP, a list of paths must be provided specifying on which paths
+that EGP should take effect. Endpoints can have multiple distinct EGPs set on
+them; all are evaluated for each request. Paths can use a glob character (`*`)
+as the last character of the path to perform a prefix match; a path that
+consists only of a `*` will apply to the root of the API. Since requests are
+subject to an EGPs exactly matching the requested path and any glob EGPs
+sitting further up the request path, an EGP with a path of `*` will thus take
+effect on all requests.
+
+## Properties and examples
+
+See the [Examples](/vault/docs/enterprise/sentinel/examples) page for examples
+of Sentinel in action, and the
+[Properties](/vault/docs/enterprise/sentinel/properties) page for detailed
+property documentation.
+
+## Tutorial
+
+Refer to the [Sentinel Policies](/vault/tutorials/policies/sentinel)
+tutorial to learn how to author Sentinel policies in Vault.
+
+[Edit this page on GitHub](https://github.com/hashicorp/web-unified-docs/blob/main/content/vault/v1.21.x/content/docs/enterprise/sentinel/index.mdx)

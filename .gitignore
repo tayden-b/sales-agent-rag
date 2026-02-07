@@ -30,3 +30,11 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Private project files (not for public repo)
+PRD.md
+CLAUDE.md
+PROGRESS.md
+USAGE.md
+data/sample_transcripts/
+data/test_urls.txt

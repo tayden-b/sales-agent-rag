@@ -6,10 +6,14 @@ Two collections:
   - call-transcripts: Grows as transcripts are processed
 """
 
+import os
 import chromadb
 from chromadb.utils.embedding_functions import OpenAIEmbeddingFunction
 
 from src.config import OPENAI_API_KEY, CHROMA_DB_PATH, EMBEDDING_MODEL
+
+# ChromaDB's OpenAI embedding function checks for OPENAI_API_KEY in environment
+os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
 
 DOCS_COLLECTION = "hashicorp-docs"
 TRANSCRIPTS_COLLECTION = "call-transcripts"
