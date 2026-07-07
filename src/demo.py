@@ -14,7 +14,8 @@ from pathlib import Path
 
 from src.config import validate_config, setup_logging
 
-SAMPLE_TRANSCRIPT = Path(__file__).parent.parent / "data" / "sample_transcript.txt"
+REPO_ROOT = Path(__file__).parent.parent
+SAMPLE_TRANSCRIPT = REPO_ROOT / "data" / "sample_transcript.txt"
 
 
 def main():
@@ -26,7 +27,7 @@ def main():
 
     print("=" * 70)
     print("Sales Call Intelligence — demo")
-    print(f"Running the full pipeline on the bundled transcript:\n  {SAMPLE_TRANSCRIPT}")
+    print(f"Running the full pipeline on the bundled transcript:\n  {SAMPLE_TRANSCRIPT.relative_to(REPO_ROOT)}")
     print("=" * 70)
 
     missing = validate_config()
