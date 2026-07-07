@@ -15,9 +15,6 @@ docs knowledge agent.
 
 ## Next up
 
-- [ ] One-command demo: bundle a realistic sample transcript fixture and a
-      `demo` entrypoint that runs the full pipeline on it, so the repo shows
-      what it does without the reader supplying their own call data.
 - [ ] Structured outputs: Pydantic schemas for what the Transcript Analyzer
       hands downstream (concerns with severity, action items with owners),
       validated at the agent boundary so a malformed extraction fails loudly
@@ -42,4 +39,6 @@ docs knowledge agent.
 
 ## Done
 
-Nothing yet — file added 2026-07-02.
+- [x] One-command demo: bundled a realistic sample transcript at
+      `data/sample_transcript.txt` and a `python -m src.demo` entrypoint that
+      runs the full pipeline on it. (2026-07-07)

@@ -60,6 +60,59 @@ def validate_transcript(text: str) -> bool:
     return True
 
 
+def process_transcript(transcript: str) -> bool:
+    """
+    Validate a transcript, run it through the pipeline, and deliver the email.
+
+    Returns False if the transcript is too short or the pipeline fails. A failed
+    email send still returns True — the analysis itself succeeded. Shared by the
+    CLI (main) and the demo entrypoint.
+    """
+    if not validate_transcript(transcript):
+        return False
+
+    word_count = len(transcript.split())
+    print(f"\nProcessing transcript ({word_count} words)...")
+    print("This typically takes 1-3 minutes.\n")
+
+    try:
+        result = run_pipeline(transcript)
+    except Exception as e:
+        logger.error(f"Pipeline failed: {e}")
+        print(f"\nError: Pipeline failed — {e}")
+        print("Check logs for details. Common issues: invalid API key, rate limits, network errors.")
+        return False
+
+    if not result["success"]:
+        print("\nPipeline completed with errors. Check logs for details.")
+        return False
+
+    # Build and send email
+    email_body = result["email_body"]
+    email_subject = result["email_subject"]
+
+    # Extract account name and date from subject for template
+    parts = email_subject.replace("Call Summary: ", "").split(" - ", 1)
+    account_name = parts[0] if parts else "Customer"
+    call_date = parts[1] if len(parts) > 1 else "Unknown"
+
+    html_email = build_html_email(email_body, account_name, call_date)
+
+    success = send_email(
+        subject=email_subject,
+        html_content=html_email,
+        plain_text=email_body,
+    )
+
+    if success:
+        print("\nDone! Email summary generated successfully.")
+    else:
+        print("\nWarning: Email sending failed. The analysis was still completed.")
+        print("Check your SendGrid configuration or enable EMAIL_PREVIEW_MODE=true in .env")
+
+    return True
+
+
 def main():
     """Main entry point."""
     setup_logging()
@@ -86,49 +139,8 @@ def main():
     else:
         transcript = read_transcript_from_stdin()
 
-    # Validate transcript
-    if not validate_transcript(transcript):
+    if not process_transcript(transcript):
         sys.exit(1)
-
-    word_count = len(transcript.split())
-    print(f"\nProcessing transcript ({word_count} words)...")
-    print("This typically takes 1-3 minutes.\n")
-
-    # Run the pipeline
-    try:
-        result = run_pipeline(transcript)
-    except Exception as e:
-        logger.error(f"Pipeline failed: {e}")
-        print(f"\nError: Pipeline failed — {e}")
-        print("Check logs for details. Common issues: invalid API key, rate limits, network errors.")
-        sys.exit(1)
-
-    if not result["success"]:
-        print("\nPipeline completed with errors. Check logs for details.")
-        sys.exit(1)
-
-    # Build and send email
-    email_body = result["email_body"]
-    email_subject = result["email_subject"]
-
-    # Extract account name and date from subject for template
-    parts = email_subject.replace("Call Summary: ", "").split(" - ", 1)
-    account_name = parts[0] if parts else "Customer"
-    call_date = parts[1] if len(parts) > 1 else "Unknown"
-
-    html_email = build_html_email(email_body, account_name, call_date)
-
-    success = send_email(
-        subject=email_subject,
-        html_content=html_email,
-        plain_text=email_body,
-    )
-
-    if success:
-        print("\nDone! Email summary generated successfully.")
-    else:
-        print("\nWarning: Email sending failed. The analysis was still completed.")
-        print("Check your SendGrid configuration or enable EMAIL_PREVIEW_MODE=true in .env")
 
 
 if __name__ == "__main__":

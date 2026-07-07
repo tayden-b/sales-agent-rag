@@ -92,6 +92,21 @@ cp .env.example .env
 # Edit .env and add your OPENAI_API_KEY
 ```
 
+## Quick Demo
+
+Want to see it run end-to-end without supplying your own call data? A realistic
+sample transcript is bundled at `data/sample_transcript.txt`, and the demo
+entrypoint runs the full five-agent pipeline on it:
+
+```bash
+python -m src.demo
+```
+
+You still need an `OPENAI_API_KEY` in `.env` (the pipeline makes real LLM
+calls), but email stays in preview mode by default, so the generated summary
+prints to your console and nothing is sent. If the key is missing, the demo
+tells you what to set before it tries anything.
+
 ## Usage
 
 ### 1. Load Documentation
@@ -139,6 +154,7 @@ By default, `EMAIL_PREVIEW_MODE=true` prints the email to your console. To send 
 sales-agent-rag/
 ├── src/
 │   ├── main.py              # CLI entry point
+│   ├── demo.py              # One-command demo on the bundled transcript
 │   ├── config.py            # Environment configuration
 │   ├── agents/              # 5 specialized CrewAI agents
 │   ├── tools/               # RAG search and storage tools
@@ -154,6 +170,7 @@ sales-agent-rag/
 │   ├── docs/                # Documentation files for RAG
 │   │   ├── vault/           # HashiCorp Vault docs
 │   │   └── terraform/       # Terraform docs
+│   ├── sample_transcript.txt # Bundled fixture for the demo
 │   ├── vault_urls.txt       # URLs to scrape (Vault)
 │   └── terraform_urls.txt   # URLs to scrape (Terraform)
 └── tests/                   # Unit tests

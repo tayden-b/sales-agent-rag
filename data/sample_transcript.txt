@@ -1,0 +1,31 @@
+Sales Call — Northwind Logistics / HashiCorp
+Date: 2026-06-18
+Attendees: Tayden Barretto (Solutions Engineer, HashiCorp), Priya Menon (Platform Lead, Northwind), Dan Osei (Security Engineer, Northwind)
+
+Tayden: Thanks for making time. Last we spoke you were standing up a new platform team and looking at secrets management. Where are things now?
+
+Priya: We're mid-migration to EKS. Right now secrets are a mess — half of them are in Kubernetes secrets base64-encoded, some are still in a shared 1Password vault, and a couple of the older services read credentials straight from environment variables baked into the image. Security flagged it in the last audit.
+
+Dan: That's the driver, honestly. The audit finding was specific: no rotation on database credentials, and no central audit log of who accessed what. We need to close that before the SOC 2 renewal in Q4.
+
+Tayden: That's squarely what Vault is for. Dynamic database secrets would give you short-lived credentials that rotate automatically, and every access is logged. For EKS specifically, the Kubernetes auth method lets pods authenticate with their service account — no static tokens to distribute.
+
+Priya: How much work is it to get the apps to actually use it? My worry is we spend three months and the app teams never adopt it.
+
+Tayden: Fair concern. The lightest touch is the Vault Agent injector — it runs as a sidecar and drops secrets into a file the app already reads, so app code barely changes. Heavier lift but cleaner is the native SDK. Most teams start with the injector to get moving.
+
+Dan: What about the Vault cluster itself? Who runs it? We're a small team and I don't want to be paged at 2am because Vault sealed itself.
+
+Tayden: That's the honest tradeoff with self-managed. You'd want auto-unseal backed by a cloud KMS and a Raft cluster across three AZs for HA. If you'd rather not run it at all, HCP Vault is the managed option — we operate it, you consume it. Given your team size that's worth pricing out.
+
+Priya: I think we need to. Budget is tight this year, so the managed-versus-self-hosted cost difference matters a lot to whether this gets approved.
+
+Dan: Agreed. And I'd want to see the audit-log format before we commit — our SIEM is Splunk and it has to land there cleanly.
+
+Tayden: Both very doable. Let me pull together a comparison and a Splunk integration example.
+
+Priya: One more — we're also standardizing Terraform for the EKS rollout. If Vault provisioning can be codified there too, that's a plus for us.
+
+Tayden: It can, and I'll include that. I'll send a recap with next steps by end of week.
+
+Priya: Perfect. This was helpful — feeling good about the direction.
