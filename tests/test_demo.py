@@ -6,11 +6,8 @@ shrinks below the pipeline's minimum, `python -m src.demo` would fail for
 anyone trying the repo, so catch it here instead.
 """
 
+from src.config import MIN_TRANSCRIPT_WORDS
 from src.demo import SAMPLE_TRANSCRIPT
-
-# Mirror main.MIN_TRANSCRIPT_WORDS. Not imported directly because src.main pulls
-# in the CrewAI stack, which these no-network tests shouldn't require.
-MIN_TRANSCRIPT_WORDS = 50
 
 
 def test_sample_transcript_is_bundled():

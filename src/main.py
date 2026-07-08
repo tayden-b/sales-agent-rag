@@ -11,14 +11,12 @@ import logging
 import sys
 from pathlib import Path
 
-from src.config import validate_config, setup_logging
+from src.config import MIN_TRANSCRIPT_WORDS, validate_config, setup_logging
 from src.crew.pipeline import run_pipeline
 from src.email.templates import build_html_email, build_email_subject
 from src.email.sender import send_email
 
 logger = logging.getLogger(__name__)
-
-MIN_TRANSCRIPT_WORDS = 50
 
 
 def read_transcript_from_file(file_path: str) -> str:
