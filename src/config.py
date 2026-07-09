@@ -27,6 +27,11 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 LLM_MODEL = "gpt-4o-mini"
 EMBEDDING_MODEL = "text-embedding-3-small"
 
+# --- Pipeline ---
+# Shortest transcript the pipeline will process. Lives here (not in main) so
+# the demo and its tests can reference it without importing the CrewAI stack.
+MIN_TRANSCRIPT_WORDS = 50
+
 
 def validate_config() -> list[str]:
     """Check that required config values are set. Returns list of missing keys."""
