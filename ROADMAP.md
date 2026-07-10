@@ -15,10 +15,6 @@ docs knowledge agent.
 
 ## Next up
 
-- [ ] Structured outputs: Pydantic schemas for what the Transcript Analyzer
-      hands downstream (concerns with severity, action items with owners),
-      validated at the agent boundary so a malformed extraction fails loudly
-      instead of poisoning the email.
 - [ ] Extraction eval: hand-label the sample transcript (expected concerns,
       action items, sentiment), score the analyzer against it, print the
       results. Run it in CI.
@@ -39,6 +35,12 @@ docs knowledge agent.
 
 ## Done
 
+- [x] Structured outputs: Pydantic schemas (`src/schemas.py`) for what the
+      Transcript Analyzer hands downstream — concerns with severity, action
+      items with owners — wired into the analyze task via `output_pydantic` so
+      a malformed extraction fails at the boundary instead of poisoning the
+      email. Downstream account/date now read off the validated model instead
+      of a hand-rolled `json.loads`. (2026-07-10)
 - [x] One-command demo: bundled a realistic sample transcript at
       `data/sample_transcript.txt` and a `python -m src.demo` entrypoint that
       runs the full pipeline on it. (2026-07-07)

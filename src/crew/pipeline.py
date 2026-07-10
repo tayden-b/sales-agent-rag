@@ -18,6 +18,7 @@ from src.agents.doc_researcher import create_doc_researcher
 from src.agents.historical_analyst import create_historical_analyst
 from src.agents.email_composer import create_email_composer
 from src.agents.knowledge_updater import create_knowledge_updater
+from src.schemas import TranscriptAnalysis
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +68,7 @@ Extract the following as a JSON object:
 Return ONLY valid JSON. No additional text.""",
         expected_output="A JSON object with account_name, call_date, account_stage, products_discussed, technical_concerns, pain_points, competitors_mentioned, action_items, sentiment, and key_quotes.",
         agent=analyzer,
+        output_pydantic=TranscriptAnalysis,
     )
 
     # --- Task 2: Research documentation ---
@@ -189,17 +191,17 @@ Confirm that the transcript was stored successfully.""",
     email_body = compose_task.output.raw if compose_task.output else ""
     analysis = analyze_task.output.raw if analyze_task.output else ""
 
-    # Try to extract account info for the subject line
+    # Pull account info for the subject line off the validated model. With
+    # output_pydantic set, CrewAI has already coerced the analyzer's JSON into a
+    # TranscriptAnalysis (or failed the task), so no hand-rolled JSON parsing.
     account_name = "Customer"
     call_date = "Unknown Date"
-    try:
-        import json
-        analysis_data = json.loads(analysis)
-        account_name = analysis_data.get("account_name", "Customer")
-        call_date = analysis_data.get("call_date", "Unknown Date")
-    except (json.JSONDecodeError, AttributeError):
-        # If we can't parse the JSON, use defaults
-        logger.warning("Could not parse analysis JSON for email subject. Using defaults.")
+    parsed = analyze_task.output.pydantic if analyze_task.output else None
+    if isinstance(parsed, TranscriptAnalysis):
+        account_name = parsed.account_name
+        call_date = parsed.call_date
+    else:
+        logger.warning("Analyzer output did not validate; using defaults for the subject line.")
 
     logger.info("Pipeline complete.")
 
