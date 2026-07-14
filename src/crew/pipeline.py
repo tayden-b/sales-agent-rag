@@ -11,7 +11,7 @@ Defines the 5-agent sequential pipeline:
 
 import logging
 
-from crewai import Crew, Task, Process
+from crewai import Agent, Crew, Task, Process
 
 from src.agents.transcript_analyzer import create_transcript_analyzer
 from src.agents.doc_researcher import create_doc_researcher
@@ -23,28 +23,14 @@ from src.schemas import TranscriptAnalysis
 logger = logging.getLogger(__name__)
 
 
-def run_pipeline(transcript: str) -> dict:
-    """
-    Run the full analysis pipeline on a call transcript.
+def build_analyze_task(transcript: str) -> tuple[Agent, Task]:
+    """Build the Transcript Analyzer agent and its analyze task.
 
-    Args:
-        transcript: The raw call transcript text
-
-    Returns:
-        dict with keys:
-          - email_subject: str
-          - email_body: str (markdown formatted)
-          - analysis: str (raw analysis from agent 1)
-          - success: bool
+    Shared by the full pipeline and the standalone analyzer the extraction eval
+    uses, so the prompt and the output_pydantic boundary stay identical between
+    a real run and what the eval scores.
     """
-    logger.info("Creating agents...")
     analyzer = create_transcript_analyzer()
-    doc_researcher = create_doc_researcher()
-    historian = create_historical_analyst()
-    composer = create_email_composer()
-    updater = create_knowledge_updater()
-
-    # --- Task 1: Analyze the transcript ---
     analyze_task = Task(
         description=f"""Analyze the following sales call transcript and extract structured information.
 
@@ -70,6 +56,49 @@ Return ONLY valid JSON. No additional text.""",
         agent=analyzer,
         output_pydantic=TranscriptAnalysis,
     )
+    return analyzer, analyze_task
+
+
+def run_analyzer(transcript: str) -> TranscriptAnalysis:
+    """Run only the Transcript Analyzer and return its validated extraction.
+
+    The extraction eval calls this to score analysis quality without running the
+    downstream research/email agents.
+    """
+    analyzer, analyze_task = build_analyze_task(transcript)
+    crew = Crew(
+        agents=[analyzer],
+        tasks=[analyze_task],
+        process=Process.sequential,
+        verbose=False,
+    )
+    crew.kickoff()
+    parsed = analyze_task.output.pydantic if analyze_task.output else None
+    if not isinstance(parsed, TranscriptAnalysis):
+        raise ValueError("Analyzer output did not validate against TranscriptAnalysis")
+    return parsed
+
+
+def run_pipeline(transcript: str) -> dict:
+    """
+    Run the full analysis pipeline on a call transcript.
+
+    Args:
+        transcript: The raw call transcript text
+
+    Returns:
+        dict with keys:
+          - email_subject: str
+          - email_body: str (markdown formatted)
+          - analysis: str (raw analysis from agent 1)
+          - success: bool
+    """
+    logger.info("Creating agents...")
+    analyzer, analyze_task = build_analyze_task(transcript)
+    doc_researcher = create_doc_researcher()
+    historian = create_historical_analyst()
+    composer = create_email_composer()
+    updater = create_knowledge_updater()
 
     # --- Task 2: Research documentation ---
     doc_research_task = Task(

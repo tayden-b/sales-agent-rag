@@ -1,0 +1,79 @@
+{
+  "_about": "Hand-labeled expected extraction for data/sample_transcript.txt (Northwind Logistics / HashiCorp). Each concern and action item is a keyword rubric: a list of groups, and it counts as found only if every group has at least one synonym present (case-insensitive substring) in the candidate text. Substring matching gives crude stemming for free, so 'rotat' catches both 'rotation' and 'rotated'. See src/eval.py.",
+  "account": "Northwind Logistics",
+  "sentiment": "Positive",
+  "technical_concerns": [
+    {
+      "label": "Secrets scattered across Kubernetes secrets, 1Password, and image env vars",
+      "keywords": [
+        ["secret", "credential"],
+        ["scatter", "sprawl", "mess", "spread", "multiple", "everywhere", "kubernetes", "1password", "environment"]
+      ]
+    },
+    {
+      "label": "No rotation on database credentials",
+      "keywords": [
+        ["rotat"],
+        ["credential", "database", "secret", "password"]
+      ]
+    },
+    {
+      "label": "No central audit log of who accessed secrets",
+      "keywords": [
+        ["audit"],
+        ["log", "trail", "access"]
+      ]
+    },
+    {
+      "label": "Risk that app teams never adopt Vault after the integration effort",
+      "keywords": [
+        ["adopt"]
+      ]
+    },
+    {
+      "label": "Operational burden of running self-managed Vault",
+      "keywords": [
+        ["self-managed", "self-host", "self managed", "operational burden", "paged", "2am", "seal"]
+      ]
+    },
+    {
+      "label": "Vault audit logs must land cleanly in Splunk",
+      "keywords": [
+        ["splunk", "siem"]
+      ]
+    },
+    {
+      "label": "Managed vs self-hosted cost matters under a tight budget",
+      "keywords": [
+        ["cost", "budget", "price", "pricing"]
+      ]
+    }
+  ],
+  "action_items": [
+    {
+      "label": "Put together a managed HCP Vault vs self-hosted cost comparison",
+      "keywords": [
+        ["cost", "price", "pricing", "comparison", "compare"],
+        ["managed", "hcp", "self-host", "self-managed", "self hosted"]
+      ]
+    },
+    {
+      "label": "Provide a Splunk integration example for the audit-log format",
+      "keywords": [
+        ["splunk", "siem", "audit"]
+      ]
+    },
+    {
+      "label": "Show how Vault provisioning can be codified in Terraform",
+      "keywords": [
+        ["terraform"]
+      ]
+    },
+    {
+      "label": "Send a recap with next steps by end of week",
+      "keywords": [
+        ["recap", "summary", "follow-up", "follow up", "next step"]
+      ]
+    }
+  ]
+}

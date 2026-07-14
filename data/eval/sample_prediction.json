@@ -1,0 +1,58 @@
+{
+  "_about": "A recorded, representative Transcript Analyzer output for the sample transcript, used to score the eval offline when no OPENAI_API_KEY is set (CI). It is deliberately imperfect — it folds the audit-log concern into the rotation one, misses the cost concern, and misses the Terraform action item — so the eval reports a meaningful, non-perfect score. With a key set, src/eval.py scores a live analyzer run instead of this.",
+  "account_name": "Northwind Logistics",
+  "call_date": "2026-06-18",
+  "account_stage": "Discovery",
+  "products_discussed": ["Vault", "Terraform", "HCP Vault"],
+  "technical_concerns": [
+    {
+      "concern": "Secrets are sprawled across Kubernetes secrets, a 1Password vault, and environment variables baked into images",
+      "context_quote": "secrets are a mess",
+      "severity": "high"
+    },
+    {
+      "concern": "Database credentials are not rotated and there is no central audit log of access",
+      "context_quote": "no rotation on database credentials, and no central audit log of who accessed what",
+      "severity": "high"
+    },
+    {
+      "concern": "App teams may not adopt Vault given the integration effort",
+      "context_quote": "we spend three months and the app teams never adopt it",
+      "severity": "medium"
+    },
+    {
+      "concern": "Running Vault self-managed is an operational burden for a small team",
+      "context_quote": "I don't want to be paged at 2am because Vault sealed itself",
+      "severity": "medium"
+    },
+    {
+      "concern": "Audit logs need to land cleanly in the Splunk SIEM",
+      "context_quote": "our SIEM is Splunk and it has to land there cleanly",
+      "severity": "medium"
+    }
+  ],
+  "pain_points": ["SOC 2 renewal in Q4", "tight budget this year"],
+  "competitors_mentioned": ["1Password"],
+  "action_items": [
+    {
+      "action": "Prepare a cost comparison of HCP Vault managed versus self-hosted",
+      "owner": "Tayden Barretto",
+      "priority": "high"
+    },
+    {
+      "action": "Share a Splunk integration example for Vault audit logs",
+      "owner": "Tayden Barretto",
+      "priority": "high"
+    },
+    {
+      "action": "Send a recap email with next steps by end of week",
+      "owner": "Tayden Barretto",
+      "priority": "high"
+    }
+  ],
+  "sentiment": "Positive",
+  "key_quotes": [
+    "This was helpful — feeling good about the direction.",
+    "Budget is tight this year, so the managed-versus-self-hosted cost difference matters a lot."
+  ]
+}

@@ -1,0 +1,20 @@
+name: extraction-eval
+
+on:
+  push:
+  pull_request:
+
+# Scores the Transcript Analyzer against the hand-labeled sample transcript.
+# Runs offline: with no OPENAI_API_KEY the eval scores the recorded prediction
+# fixture, so it needs pydantic but not the full CrewAI stack.
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pydantic pytest
+      - run: python -m src.eval
+      - run: pytest tests/test_eval.py -q
