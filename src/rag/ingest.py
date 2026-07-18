@@ -8,8 +8,10 @@ and stores them in the hashicorp-docs ChromaDB collection.
 import os
 import logging
 from pathlib import Path
+from typing import TYPE_CHECKING, Optional
 
-from src.rag.database import get_docs_collection
+if TYPE_CHECKING:
+    from chromadb import Collection
 
 logger = logging.getLogger(__name__)
 
@@ -45,10 +47,14 @@ def chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVE
     return chunks
 
 
-def ingest_file(file_path: Path, product: str) -> int:
+def ingest_file(file_path: Path, product: str, collection: Optional["Collection"] = None) -> int:
     """
     Ingest a single documentation file into ChromaDB.
     Returns the number of chunks stored.
+
+    Pass `collection` to write into a specific collection; when omitted the
+    real hashicorp-docs collection is used. Injecting it lets tests exercise
+    the chunking and metadata without a ChromaDB client or an embedding API.
     """
     text = file_path.read_text(encoding="utf-8")
     if not text.strip():
@@ -56,7 +62,11 @@ def ingest_file(file_path: Path, product: str) -> int:
         return 0
 
     chunks = chunk_text(text)
-    collection = get_docs_collection()
+    if collection is None:
+        # Imported lazily so callers that inject a collection don't pull in
+        # chromadb or need an OpenAI key just to run.
+        from src.rag.database import get_docs_collection
+        collection = get_docs_collection()
 
     ids = []
     documents = []

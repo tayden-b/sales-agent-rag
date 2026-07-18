@@ -15,8 +15,6 @@ docs knowledge agent.
 
 ## Next up
 
-- [ ] Tests for chunking and the ChromaDB metadata written by the knowledge
-      base updater — fixture-based, no API calls.
 - [ ] CI: lint + the no-network tests on push. (Partly done: the extraction
       eval already runs in its own `extraction-eval` workflow. This item is now
       about a lint step and running the rest of the no-network suite.)
@@ -34,6 +32,15 @@ docs knowledge agent.
 
 ## Done
 
+- [x] Tests for chunking and the ChromaDB metadata written by the updater
+      (`tests/test_ingest.py`). A `FakeCollection` captures the `upsert`, so the
+      tests assert chunk boundaries (paragraph split, overlap tail carried into
+      the next chunk, no words dropped) and per-chunk metadata (id format
+      `{product}_{stem}_{i}`, product, source_file, `chunk_index`,
+      `total_chunks`) with no ChromaDB client or embedding API. Made this
+      possible by moving the `get_docs_collection` import inside `ingest_file`
+      and adding an injectable `collection` arg — so importing the updater no
+      longer pulls in chromadb or needs an OpenAI key. (2026-07-18)
 - [x] Extraction eval: hand-labeled the sample transcript in
       `data/eval/gold_labels.json` (expected concerns, action items, sentiment
       as keyword rubrics), and `src/eval.py` scores an analyzer extraction
